@@ -1,3 +1,3 @@
 Computer-aided Surveillance System (CASS)
 ====
-CS 342 final project
+CS 362 final project
