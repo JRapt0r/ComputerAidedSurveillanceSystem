@@ -19,7 +19,6 @@ while (True):
 	# Looks for faces using the face cascade data
 	faces = face_cascade.detectMultiScale(gray, 1.125, 5)
 	profiles = profile_cascade.detectMultiScale(gray, 1.1, 5)
-
 	for (x, y, w, h) in faces:		
 		cv2.rectangle(gray, (x, y), (x + w, y + h), (255, 0, 0), 2)
 		print(x,y) # Print x,y coordinates of detected face
@@ -29,6 +28,8 @@ while (True):
 			cv2.rectangle(gray,(px,py),(px+pw,py+ph),(0,255,0),2)
 			print(px,py)
 	
+	cv2.imshow('frame',gray)
+
 	# Waits for the "q" key to quite the program
 	if cv2.waitKey(1) & 0xFF == ord('q'):
 		break
