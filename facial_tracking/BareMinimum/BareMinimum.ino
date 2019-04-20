@@ -6,7 +6,7 @@ Servo tiltServo;
 //Left right servo
 Servo panServo;
 
-int pan, tilt;
+int pan, tilt, multi;
 
 bool moveRight, moveLeft, moveUp, moveDown = false;
 void SetMovement(String data){
@@ -21,6 +21,14 @@ void SetMovement(String data){
     }else if(data.indexOf("down") > -1){
       moveDown = true;
     }
+
+    if(data.indexOf("high") > -1){
+      multi = 5;
+    }else if(data.indexOf("med") > -1){
+      multi = 2;
+    }else{
+      multi = 1;
+    }
 }
 
 void ResetMove(){
@@ -32,15 +40,15 @@ void ResetMove(){
 
 void MoveServos(){
   if(moveRight){
-    panServo.write(panServo.read() + 5);
+    panServo.write(panServo.read() + multi);
   }else if(moveLeft){
-    panServo.write(panServo.read() - 5);
+    panServo.write(panServo.read() - multi);
   }
 
   if(moveUp){
-    tiltServo.write(tiltServo.read() + 5);
+    tiltServo.write(tiltServo.read() + multi);
   }else if(moveDown){
-    tiltServo.write(tiltServo.read() - 5);
+    tiltServo.write(tiltServo.read() - multi);
   }
 }
 
