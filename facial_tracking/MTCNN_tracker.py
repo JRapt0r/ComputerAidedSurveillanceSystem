@@ -112,7 +112,7 @@ while (True):
     #If we've recieved a string from the arduino
     if duino.in_waiting > 0:
         if "toggleTracking" in duino.readLine:
-            tracking = (tracking)
+            tracking = not tracking
 
     # Capture frame-by-frame
     ret, frame = cap.read()
