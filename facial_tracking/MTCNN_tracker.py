@@ -147,7 +147,7 @@ while (True):
         determineMoves(centerX, centerY)
 
         #Send to the second arduino the number of faces detected
-        sendToSerial("DUINO2 faces: " + str(len(result)))
+        sendToSerial("DUINO2 faceData faces: " + str(len(result)))
 
 
     cv2.imshow('frame', cv2.flip(frame, 1))
