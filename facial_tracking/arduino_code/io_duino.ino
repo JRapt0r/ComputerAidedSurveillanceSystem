@@ -23,6 +23,11 @@ unsigned long lastButtonPress = 0;
 //Half a second delay for button presses
 unsigned long debounceDelay = 500;
 
+//Tracking if the lcd has changed
+String lastSerial;
+
+boolean lcdChanged = false;
+
 void setup()
 {
     //Start the lcd
@@ -60,10 +65,25 @@ void loop()
         //Determine if our data is related to detected faces or LED
         if (data.indexOf("toggleLED") > -1) {
             digitalWrite(ledPin, HIGH);
+            Serial.flush();
         }
-        else if (data.indexOf("faceData") > -1) {
+        if (data.indexOf("faceData") > -1) {
             data = data.substring(16);
-            lcd.print(data);
+            if(lastSerial.substring(16) != data){
+               lcd.clear();
+               lcd.print(data);
+               lcdChanged = true;
+            }
+            Serial.flush();
         }
+        Serial.flush();
+    }else{
+      digitalWrite(ledPin, LOW);
+    }
+    
+    if(lcdChanged){
+        lcd.clear();
+        lcd.print("Faces: 0");
+        lcdChanged = false;
     }
 }
