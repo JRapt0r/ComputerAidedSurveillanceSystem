@@ -6,7 +6,7 @@ from mtcnn.mtcnn import MTCNN
 import serial
 
 # Create connection with the Arduino
-duino = serial.Serial('COM6', 115200, timeout=0.05)
+duino = serial.Serial('COM6', 115200, timeout=1)
 
 detector = MTCNN()  # Initialize MTCNN 'detector' object 
 
@@ -38,6 +38,10 @@ Y_LOW_LIMIT = FRAME_CENTER_Y - Y_OFF_CENTER_LIMIT
 # to determine if we have to move the servos faster
 lastX = 0
 lastY = 0
+
+#Are we currently tracking or not?
+tracking = false
+
 
 # Determine the limits for determining big/med/small move
 BIG_MOVE_LIMIT_X = 25
@@ -89,6 +93,11 @@ def determineMoves(centerX, centerY):
         print("small y move")
         serialString += "smally"
 
+    #If we've made no moves, our arduino camera is centered, so we should tell it that
+    #ALL STRINGS BEGINNING WITH DUINO2 ARE ONLY HANDELED BY THE SECOND ARDUINO
+    if serialString == "":
+        serialString = "DUINO2 toggleLED"
+
     sendToSerial(serialString)
 
     lastY = centerY
@@ -96,8 +105,13 @@ def determineMoves(centerX, centerY):
 
 
 while (True):
-    if (duino.in_waiting > 0):
-        print(duino.readline())
+
+    #If we've recieved a string from the arduino
+    if duino.in_waiting > 0:
+        if "toggleTracking" in duino.readLine:
+            tracking != tracking
+
+
 
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -105,7 +119,7 @@ while (True):
     # Use MTCNN to detect faces
     result = detector.detect_faces(frame)
 
-    if result != []:
+    if result != [] and tracking:
         for person in result:
             bounding_box = person['box']
 
@@ -119,10 +133,21 @@ while (True):
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 155, 255), 2)
 
             # Point for center of image
-            centerX = int(x + (w / 2))
-            centerY = int(y + (h / 2))
+            # For each face detected, add to the value
+            # These will be average later
+            centerX += int(x)
+            centerY += int(y)
+        
+        #Average the values
+        centerX = int(centerX / len(result))
+        centerY = int(centerY / len(result))
 
-            determineMoves(centerX, centerY)
+        #Determine the arduino moves
+        determineMoves(centerX, centerY)
+
+        #Send to the second arduino the number of faces detected
+        sendToSerial("DUINO2 faces: " + len(result))
+
 
     cv2.imshow('frame', cv2.flip(frame, 1))
 
