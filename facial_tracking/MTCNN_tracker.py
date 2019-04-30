@@ -39,8 +39,11 @@ Y_LOW_LIMIT = FRAME_CENTER_Y - Y_OFF_CENTER_LIMIT
 lastX = 0
 lastY = 0
 
+centerX = 0
+centerY = 0
+
 #Are we currently tracking or not?
-tracking = false
+tracking = False
 
 
 # Determine the limits for determining big/med/small move
@@ -51,7 +54,7 @@ BIG_MOVE_LIMIT_Y = 19
 MED_MOVE_LIMIT_Y = 11
 
 def sendToSerial(data):
-    duino.write(data.encode())
+	duino.write(data.encode())
 
 def determineMoves(centerX, centerY):
 
@@ -111,8 +114,6 @@ while (True):
         if "toggleTracking" in duino.readLine:
             tracking != tracking
 
-
-
     # Capture frame-by-frame
     ret, frame = cap.read()
 
@@ -146,7 +147,7 @@ while (True):
         determineMoves(centerX, centerY)
 
         #Send to the second arduino the number of faces detected
-        sendToSerial("DUINO2 faces: " + len(result))
+        sendToSerial("DUINO2 faces: " + str(len(result)))
 
 
     cv2.imshow('frame', cv2.flip(frame, 1))
