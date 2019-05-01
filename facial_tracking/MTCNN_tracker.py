@@ -5,14 +5,15 @@ from mtcnn.mtcnn import MTCNN
 # Import serial for interfacing with the Arduino
 import serial
 
+
+
 # Create connection with the Arduino
-duino = serial.Serial('COM6', 115200, timeout=1)
-ioduino = serial.Serial('COM4', 115200, timeout=1)
+duino = serial.Serial('COM4', 115200, timeout=5)
 
 detector = MTCNN()  # Initialize MTCNN 'detector' object
 
 # Captures a feed from the webcam
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 # Increase face detection speed through lowering the resolution
 cap.set(3, 320)
@@ -46,6 +47,8 @@ centerY = 0
 # Are we currently tracking or not?
 tracking = False
 
+#threading
+import threading
 
 # Determine the limits for determining big/med/small move
 BIG_MOVE_LIMIT_X = 25
@@ -56,14 +59,51 @@ BIG_MOVE_LIMIT_Y = 19
 MED_MOVE_LIMIT_Y = 11
 SMALL_MOVE_LIMIT_Y = 4
 
-lastMessage = ""
+ioPendingMessage = ""
+killThreads = False
 
+#How many faces did we detect last frame?
+lastFrameFaces = 0
+
+#We had to create a thread to handle serial communications
+def ioDuinoThread():
+    global tracking
+    global ioPendingMessage
+    global killThreads
+    global lastFrameFaces
+    faces = 0
+    ioduino = serial.Serial('COM3', 115200, timeout=5)
+    while(True):
+        if(killThreads):
+            break
+        if ioduino.in_waiting > 0:
+            if "toggleTracking" in str(ioduino.readline()):
+                tracking = not tracking
+                ioduino.flush()
+        if(lastFrameFaces != faces):
+            temp = "faceData faces: " + str(lastFrameFaces)
+            print(temp)
+            faces = lastFrameFaces
+            ioduino.write(temp.encode())
+            ioduino.flush()
+        if(ioPendingMessage != ""):
+            ioduino.write(ioPendingMessage.encode())
+            ioduino.flush
+            ioPendingMessage = ""
+
+
+serialThread = threading.Thread(target = ioDuinoThread)
+serialThread.start()
 
 def sendToSerial(data, board):
+    global ioPendingMessage
+    global duino
     if (board == 1):
         duino.write(data.encode())
     if (board == 2):
-        ioduino.write(data.encode())
+        ioPendingMessage = data
+    duino.flush()
+    
 
 
 def determineMoves(centerX, centerY):
@@ -73,8 +113,6 @@ def determineMoves(centerX, centerY):
     global lastMessage
 
     serialString = ""
-
-    print(centerX - lastX)
 
     if (centerY < Y_LOW_LIMIT):
         serialString += "down"
@@ -88,33 +126,28 @@ def determineMoves(centerX, centerY):
 
     # Determine how far the face has moved
     if (centerX - lastX > BIG_MOVE_LIMIT_X or -(centerX - lastX) > BIG_MOVE_LIMIT_X):
-        print("big x move")
         serialString += "bigx"
     elif (centerX - lastX > MED_MOVE_LIMIT_X or -(centerX - lastX) > MED_MOVE_LIMIT_X):
-        print("med x move")
         serialString += "medx"
     elif (centerX - lastX > SMALL_MOVE_LIMIT_X or -(centerX - lastX) > SMALL_MOVE_LIMIT_X):
-        print("small x move")
         serialString += "smallx"
 
     if (centerY - lastY > BIG_MOVE_LIMIT_Y or -(centerY - lastY) > BIG_MOVE_LIMIT_Y):
-        print("big y move")
         serialString += "bigy"
     elif (centerY - lastY > MED_MOVE_LIMIT_Y or -(centerY - lastY) > MED_MOVE_LIMIT_Y):
-        print("med y move")
         serialString += "medy"
     elif ((centerY - lastY > SMALL_MOVE_LIMIT_Y or centerY - lastY > SMALL_MOVE_LIMIT_Y)):
-        print("small y move")
         serialString += "smally"
 
     # If we've made no moves, our arduino camera is centered, so we should tell it that
     # ALL STRINGS BEGINNING WITH DUINO2 ARE ONLY HANDELED BY THE SECOND ARDUINO
     if serialString == "":
-        print("bck dick")
         serialString = str("DUINO2 toggleLED\n")
-        sendToSerial(serialString, 2)
+        sendThread = threading.Thread(target = sendToSerial, args=(serialString,2))
+        sendThread.start()
     else:
-        sendToSerial(serialString, 1)
+        sendThread = threading.Thread(target = sendToSerial, args=(serialString,1))
+        sendThread.start()
 
     lastMessage = serialString
 
@@ -123,13 +156,6 @@ def determineMoves(centerX, centerY):
 
 
 while (True):
-
-    # If we've recieved a string from the arduino
-    if ioduino.in_waiting > 0:
-        if "toggleTracking" in str(ioduino.readline()):
-            tracking = not tracking
-            print("Tracking")
-
     # Capture frame-by-frame
     ret, frame = cap.read()
 
@@ -157,12 +183,13 @@ while (True):
             determineMoves(centerX, centerY)
 
         # Send to the second arduino the number of faces detected
-        sendToSerial("DUINO2 faceData faces: " + str(len(result)), 2)
-
+    
+    lastFrameFaces = len(result)
     cv2.imshow('frame', cv2.flip(frame, 1))
 
     # Waits for the "q" key to quite the program
     if cv2.waitKey(1) & 0xFF == ord('q'):
+        killThreads = True
         break
 
 # Releases the capture

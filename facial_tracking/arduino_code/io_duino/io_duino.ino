@@ -53,7 +53,7 @@ void loop()
     //And we have waited long enough since the last press
     if (buttonReading == HIGH && (millis() - lastButtonPress) > debounceDelay) {
         //Send serial information to our python program
-        Serial.println("toggleTracking\n");
+        Serial.println("toggleTracking");
 
         //Set the last buttonPress time
         lastButtonPress = millis();
@@ -61,25 +61,16 @@ void loop()
 
     //If we recieved serial data
     if (Serial.available() > 0) {
+        digitalWrite(LED_BUILTIN, LOW);
         String data = Serial.readString();
-        data.trim();
         //Determine if our data is related to detected faces or LED
         if (data.indexOf("toggleLED") > -1) {
             digitalWrite(ledPin, HIGH);
         }
         if (data.indexOf("faceData") > -1) {
             data = data.substring(16);
-            if(lastSerial.substring(16) != data){
-               lcd.clear();
-               lcd.print(data);
-               lcdChanged = true;
-            }
+            lcd.clear();
+            lcd.print(data);
         }
-    }
-    
-    if(lcdChanged){
-        lcd.clear();
-        lcd.print("Faces: 0");
-        lcdChanged = false;
     }
 }
