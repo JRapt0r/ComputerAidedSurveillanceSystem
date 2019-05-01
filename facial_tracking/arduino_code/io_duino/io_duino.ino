@@ -27,6 +27,7 @@ unsigned long debounceDelay = 500;
 String lastSerial;
 
 boolean lcdChanged = false;
+boolean lcd_on = false;
 
 void setup()
 {
@@ -34,8 +35,9 @@ void setup()
     lcd.begin(16, 2);
 
     //Print the default message of 0 faces
-    lcd.print("0 faces detected");
-
+    lcd.print("Press button to");
+    lcd.setCursor(0, 1);
+    lcd.print("track faces");
     //Set the pinmode for buttons and LED
     pinMode(ledPin, OUTPUT);
     pinMode(buttonPin, INPUT);
@@ -65,9 +67,11 @@ void loop()
         String data = Serial.readString();
         //Determine if our data is related to detected faces or LED
         if (data.indexOf("toggleLED") > -1) {
-            digitalWrite(ledPin, HIGH);
-        }else if (data.indexOf("faceData") > -1) {
-            data = data.substring(9);
+          digitalWrite(ledPin, HIGH);
+        }
+        else if (data.indexOf("faceData") > -1) {
+            data = data.substring(9,17);
+            data.trim(); // Trims whitespace characters
             lcd.clear();
             lcd.print(data);
         }
