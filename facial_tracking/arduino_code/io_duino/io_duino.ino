@@ -66,9 +66,8 @@ void loop()
         //Determine if our data is related to detected faces or LED
         if (data.indexOf("toggleLED") > -1) {
             digitalWrite(ledPin, HIGH);
-        }
-        if (data.indexOf("faceData") > -1) {
-            data = data.substring(16);
+        }else if (data.indexOf("faceData") > -1) {
+            data = data.substring(9);
             lcd.clear();
             lcd.print(data);
         }
