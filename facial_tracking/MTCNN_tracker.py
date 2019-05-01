@@ -7,8 +7,9 @@ import serial
 
 # Create connection with the Arduino
 duino = serial.Serial('COM6', 115200, timeout=1)
+ioduino = serial.Serial('COM4', 115200, timeout=1)
 
-detector = MTCNN()  # Initialize MTCNN 'detector' object 
+detector = MTCNN()  # Initialize MTCNN 'detector' object
 
 # Captures a feed from the webcam
 cap = cv2.VideoCapture(1)
@@ -42,24 +43,34 @@ lastY = 0
 centerX = 0
 centerY = 0
 
-#Are we currently tracking or not?
+# Are we currently tracking or not?
 tracking = False
 
 
 # Determine the limits for determining big/med/small move
 BIG_MOVE_LIMIT_X = 25
 MED_MOVE_LIMIT_X = 15
+SMALL_MOVE_LIMIT_X = 5
 
 BIG_MOVE_LIMIT_Y = 19
 MED_MOVE_LIMIT_Y = 11
+SMALL_MOVE_LIMIT_Y = 4
 
-def sendToSerial(data):
-	duino.write(data.encode())
+lastMessage = ""
+
+
+def sendToSerial(data, board):
+    if (board == 1):
+        duino.write(data.encode())
+    if (board == 2):
+        ioduino.write(data.encode())
+
 
 def determineMoves(centerX, centerY):
 
     global lastX
     global lastY
+    global lastMessage
 
     serialString = ""
 
@@ -82,7 +93,7 @@ def determineMoves(centerX, centerY):
     elif (centerX - lastX > MED_MOVE_LIMIT_X or -(centerX - lastX) > MED_MOVE_LIMIT_X):
         print("med x move")
         serialString += "medx"
-    else:
+    elif (centerX - lastX > SMALL_MOVE_LIMIT_X or -(centerX - lastX) > SMALL_MOVE_LIMIT_X):
         print("small x move")
         serialString += "smallx"
 
@@ -92,16 +103,20 @@ def determineMoves(centerX, centerY):
     elif (centerY - lastY > MED_MOVE_LIMIT_Y or -(centerY - lastY) > MED_MOVE_LIMIT_Y):
         print("med y move")
         serialString += "medy"
-    else:
+    elif ((centerY - lastY > SMALL_MOVE_LIMIT_Y or centerY - lastY > SMALL_MOVE_LIMIT_Y)):
         print("small y move")
         serialString += "smally"
 
-    #If we've made no moves, our arduino camera is centered, so we should tell it that
-    #ALL STRINGS BEGINNING WITH DUINO2 ARE ONLY HANDELED BY THE SECOND ARDUINO
+    # If we've made no moves, our arduino camera is centered, so we should tell it that
+    # ALL STRINGS BEGINNING WITH DUINO2 ARE ONLY HANDELED BY THE SECOND ARDUINO
     if serialString == "":
-        serialString = "DUINO2 toggleLED"
+        print("bck dick")
+        serialString = str("DUINO2 toggleLED\n")
+        sendToSerial(serialString, 2)
+    else:
+        sendToSerial(serialString, 1)
 
-    sendToSerial(serialString)
+    lastMessage = serialString
 
     lastY = centerY
     lastX = centerX
@@ -109,10 +124,11 @@ def determineMoves(centerX, centerY):
 
 while (True):
 
-    #If we've recieved a string from the arduino
-    if duino.in_waiting > 0:
-        if "toggleTracking" in duino.readLine:
+    # If we've recieved a string from the arduino
+    if ioduino.in_waiting > 0:
+        if "toggleTracking" in str(ioduino.readline()):
             tracking = not tracking
+            print("Tracking")
 
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -136,19 +152,12 @@ while (True):
             # Point for center of image
             # For each face detected, add to the value
             # These will be average later
-            centerX += int(x)
-            centerY += int(y)
-        
-        #Average the values
-        centerX = int(centerX / len(result))
-        centerY = int(centerY / len(result))
+            centerX = int(x + (w / 2))
+            centerY = int(y + (h / 2))
+            determineMoves(centerX, centerY)
 
-        #Determine the arduino moves
-        determineMoves(centerX, centerY)
-
-        #Send to the second arduino the number of faces detected
-        sendToSerial("DUINO2 faceData faces: " + str(len(result)))
-
+        # Send to the second arduino the number of faces detected
+        sendToSerial("DUINO2 faceData faces: " + str(len(result)), 2)
 
     cv2.imshow('frame', cv2.flip(frame, 1))
 
