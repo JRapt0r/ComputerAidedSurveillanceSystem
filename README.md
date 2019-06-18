@@ -1,6 +1,6 @@
 Computer-aided Surveillance System (CASS)
 ====
-CS 362 final project
+An arduino-based facial tracking robot that runs on two servos.
 
 ### To get the OpenCV prototype code to run:
 
